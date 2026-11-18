@@ -37,20 +37,38 @@ final class Session
         $_SESSION[$clave] = $valor;
     }
 
-    public static function has(string $clave): bool
-    {
-        // TODO
+    public static function has(string $clave): bool{
+        //Devolvemos si la session tiene clave establecida o no
+        return isset($_SESSION[$clave]);
     }
 
     public static function remove(string $clave): void
     {
-        // TODO
+        //Deshacemos la $clave de sesion
+        unset($_SESSION[$clave]);
     }
 
     // ---------- Etapa 1 y 2: cierre de sesión ----------
     public static function destruir(): void
     {
         // Etapa 1: solo session_destroy().
+        //Vaciamos todas las variables de la sesion en el script actual
+        $_SESSION = [];
+
+        if (ini_get('session.use_cookies')) {
+            $p = session_get_cookie_params();
+            setcookie(session_name(), '', [
+                'expires'  => time() - 42000,
+                'path'     => $p['path'],
+                'domain'   => $p['domain'],
+                'secure'   => $p['secure'],
+                'httponly' => $p['httponly'],
+                'samesite' => $p['samesite'],
+            ]);
+        }
+
+
+
         // Etapa 2 (TODO): completar con los 3 pasos del apartado 3.6
         session_destroy();
     }

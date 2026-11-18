@@ -23,6 +23,25 @@ final class AuthController
     public function login(): void
     {
         // TODO (Etapa 2): leer 'email' y 'password' de $_POST
+        // 1. Leer email y password de $_POST utilizando operadores de fusión por seguridad
+        $email = $_POST['email'] ?? '';
+        $password = $_POST['password'] ?? '';
+
+        // 2. Buscar el usuario con findByEmail()
+        $user = (new UserModel())->findByEmail($email);
+
+        // 3. Comprobar que el usuario existe y que la contraseña coincide
+        if ($user && password_verify($password, $user['password'])) {
+            // 4. Regenerar la sesión por seguridad antes de autenticar
+            Session::regenerar();
+
+            // 5. Guardar el id del usuario en la sesión y redirigir al perfil
+            Session::set('user_id', $user['id']);
+            redirect('perfil');
+        } else {
+            // Si falla (correo no existe o contraseña incorrecta), redirigir al login
+            redirect('login');
+        }
         // TODO: buscar el usuario con (new UserModel())->findByEmail()
         // TODO: comprobar la contraseña con password_verify()
         // TODO: si es correcta -> Session::set('user_id', ...) y redirect('perfil')
@@ -34,5 +53,8 @@ final class AuthController
     public function logout(): void
     {
         // TODO (Etapa 2): Session::destruir() y redirect('login')
+        // Destruir la sesión por completo y redirigir al login
+        Session::destruir();
+        redirect('login');
     }
 }
