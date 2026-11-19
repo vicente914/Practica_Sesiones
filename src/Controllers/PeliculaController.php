@@ -13,9 +13,6 @@ final class PeliculaController
     /** Catálogo completo. */
     public function index(): void
     {
-        if (!Session::has('user_id')) {
-            redirect('login');
-        }
         
         $peliculas = (new PeliculaModel())->all();
 
