@@ -16,12 +16,23 @@ final class Session
             return;
         }
 
-        // TODO (Etapa 4, Exp. B): ini_set de use_strict_mode,
-        //      use_only_cookies y use_trans_sid
-        // TODO (Etapa 4, Exp. B): detectar HTTPS dinámicamente
-        //      $https = !empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off';
-        // TODO (Etapa 4, Exp. B): session_set_cookie_params([...])
-        //      con httponly, samesite y secure
+        // Directivas de seguridad recomendadas
+        ini_set('session.use_strict_mode', '1');
+        ini_set('session.use_only_cookies', '1');
+        ini_set('session.use_trans_sid', '0');
+
+        // Detectar HTTPS dinámicamente
+        $https = !empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off';
+
+        // Configurar los parámetros de la cookie de sesión de forma segura
+        session_set_cookie_params([
+            'lifetime' => 0,
+            'path'     => '/',
+            'domain'   => '',
+            'secure'   => $https,
+            'httponly' => true,
+            'samesite' => 'Lax',
+        ]);
 
         session_start();
     }
@@ -37,21 +48,20 @@ final class Session
         $_SESSION[$clave] = $valor;
     }
 
-    public static function has(string $clave): bool{
-        //Devolvemos si la session tiene clave establecida o no
+    public static function has(string $clave): bool
+    {
         return isset($_SESSION[$clave]);
     }
 
     public static function remove(string $clave): void
     {
-        //Deshacemos la $clave de sesion
         unset($_SESSION[$clave]);
     }
 
     // ---------- Etapa 1 y 2: cierre de sesión ----------
     public static function destruir(): void
     {
-        // Etapa 1: solo session_destroy().
+         // Etapa 1: solo session_destroy().
         //Vaciamos todas las variables de la sesion en el script actual
         $_SESSION = [];
 
@@ -77,30 +87,49 @@ final class Session
     public static function regenerar(): void
     {
         // TODO: session_regenerate_id(true)
+        session_regenerate_id(true);
     }
 
     // ---------- Etapa 5: mensajes flash ----------
     public static function setFlash(string $clave, string $mensaje): void
     {
         // TODO: guardarlo dentro de $_SESSION['_flash'][$clave]
+        $_SESSION['_flash'][$clave] = $mensaje;
     }
 
     public static function getFlash(string $clave): ?string
     {
         // TODO: devolver el mensaje Y borrarlo en el mismo instante
-        return null;
+        $mensaje = $_SESSION['_flash'][$clave];
+        unset($_SESSION['_flash'][$clave]); //Se borra al instante
+        return $mensaje;
     }
 
     // ---------- Etapa 6: caducidad por inactividad ----------
     public static function comprobarCaducidad(): void
     {
-        // TODO: solo si existe 'user_id' en la sesión
-        // TODO: si han pasado más de INACTIVIDAD_MAX segundos desde
-        //       'ultima_actividad':
-        //       1) destruir la sesión
-        //       2) ¿qué falta para poder dejar un flash? (ver pista)
-        //       3) setFlash('error', 'Tu sesión ha caducado por inactividad')
-        //       4) redirect('login');
-        // TODO: si no caduca, actualizar 'ultima_actividad' con time()
+        // Solo si existe 'user_id' en la sesión
+        if (self::has('user_id')) {
+            $ultima = self::get('ultima_actividad', time());
+            
+            // Si han pasado más de INACTIVIDAD_MAX segundos desde la última petición
+            if ((time() - $ultima) > self::INACTIVIDAD_MAX) {
+                // 1) Destruir la sesión actual
+                self::destruir();
+                
+                // 2 & 3) Como destruir() borra la sesión, reabrimos brevemente una nueva sesión 
+                // para poder dejar el mensaje flash de caducidad
+                if (session_status() !== PHP_SESSION_ACTIVE) {
+                    session_start();
+                }
+                self::setFlash('error', 'Tu sesión ha caducado por inactividad.');
+                
+                // 4) Redirigir al login
+                redirect('login');
+            }
+            
+            // Si no caduca, actualizar 'ultima_actividad' con el tiempo actual
+            self::set('ultima_actividad', time());
+        }
     }
 }

@@ -15,33 +15,32 @@ final class AuthController
 {
     // Etapa 5: leed los flash 'error' e 'info' con Session::getFlash()
     // y pasadlos a la vista (la vista no accede a Session).
-    public function showLogin(): void
-    {
-        (new Pages())->render('auth/login', ['error' => null, 'info' => null]);
+    public function showLogin(): void{
+        $error = Session::getFlash('error');
+        $info = Session::getFlash('info');
+        (new Pages())->render('auth/login', ['error' => $error, 'info' => $info]);
     }
 
     public function login(): void
     {
         // TODO (Etapa 2): leer 'email' y 'password' de $_POST
-        // 1. Leer email y password de $_POST utilizando operadores de fusión por seguridad
         $email = $_POST['email'] ?? '';
         $password = $_POST['password'] ?? '';
 
-        // 2. Buscar el usuario con findByEmail()
         $user = (new UserModel())->findByEmail($email);
 
-        // 3. Comprobar que el usuario existe y que la contraseña coincide
-        if ($user && password_verify($password, $user['password'])) {
-            // 4. Regenerar la sesión por seguridad antes de autenticar
+        if ($user && password_verify($password, $user['hash'])){
             Session::regenerar();
-
-            // 5. Guardar el id del usuario en la sesión y redirigir al perfil
             Session::set('user_id', $user['id']);
+            Session::set('ultima_actividad', time()); //marca inicial de tiempo
             redirect('perfil');
-        } else {
-            // Si falla (correo no existe o contraseña incorrecta), redirigir al login
-            redirect('login');
+            
         }
+        else{
+            // Si falla el login, guardamos el error flash
+            Session::setFlash('error', 'Credenciales incorrectas.');
+            redirect('login');
+        }        
         // TODO: buscar el usuario con (new UserModel())->findByEmail()
         // TODO: comprobar la contraseña con password_verify()
         // TODO: si es correcta -> Session::set('user_id', ...) y redirect('perfil')
@@ -54,6 +53,8 @@ final class AuthController
     {
         // TODO (Etapa 2): Session::destruir() y redirect('login')
         // Destruir la sesión por completo y redirigir al login
+        Session::setFlash('info', 'Has cerrado sesión correctamente.');
+        
         Session::destruir();
         redirect('login');
     }
