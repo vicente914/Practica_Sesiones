@@ -1,24 +1,32 @@
 <?php
-/** ARCHIVO DE ARRANQUE  */
 declare(strict_types=1);
 
-// Ruta absoluta a la raíz del proyecto.
-define('BASE_PATH', dirname(__DIR__));
+namespace Middlewares;
 
-require BASE_PATH . '/autoloader.php';
-require BASE_PATH . '/config/config.php';
-require BASE_PATH . '/config/routes.php';
-require_once BASE_PATH . '/src/Core/helpers.php';
-
-use Core\Router;
 use Core\Session;
 
-// La sesión se inicia UNA sola vez por petición, antes de cualquier salida.
-Session::iniciar();
-Session::set('secret', '1234');
+final class AuthMiddleware
+{
+    /** Envuelve una acción con el middleware (ya hecha).
+     *  Equivale a ->middleware('auth') de Laravel. */
+    public static function proteger(array $accion): callable
+    {
+        return function (...$params) use ($accion) {
+            (new self())->handle();   // 1º el middleware
+            $accion[0] = new $accion[0]();  // 2º el controlador
+            return call_user_func_array($accion, $params);
+        };
+    }
 
-// Etapa 6: aquí se llamará a Session::comprobarCaducidad();
-Session::comprobarCaducidad();
-
-// Evalúa la URL recibida y ejecuta la función/controlador asociado
-Router::dispatch();
+    public static function handle(): void
+    {
+        if (!Session::has('user_id')) {
+            Session::setFlash('error', 'Debes iniciar sesión para ver esta página.');
+            redirect('login');
+        }
+        // TODO: si no existe 'user_id' en la sesión:
+        
+        //       - dejar un flash (Etapa 5): «Debes iniciar sesión para ver esta página»
+        //       - redirect('login')  (ya incluye exit)
+    }
+}
